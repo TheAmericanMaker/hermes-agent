@@ -32,7 +32,6 @@ grep -E '^- [0-9]{4}-[0-9]{2}-[0-9]{2}' .codecarto/THREAD_LOG.md | sort | uniq -
 
 <!--
   Append one line per session below this marker.
-  Example:
-  - 2026-05-02 — framework-feedback-pass — applied 6 spec-blockers + 5 clarifications from FEEDBACK_INDEX.md — [closeout](closeouts/2026-05-02-framework-feedback-pass.md)
 -->
 
+- 2026-05-06 — architecture — produced architecture-map.md (35 KB) + 5 secondaries; validation PASS; 5 open questions, 11 carry-forwards routed to downstream phases — [closeout](closeouts/2026-05-06-architecture.md)

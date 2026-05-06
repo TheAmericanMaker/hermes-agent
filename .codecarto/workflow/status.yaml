@@ -1,15 +1,41 @@
 project_name: hermes-agent
 pipeline: workflow/pipeline-full-with-deep-audit.yaml
-current_phase: architecture
+current_phase: "defect-scan-mechanical, contracts, protocols (parallel)"
 last_updated: "2026-05-06"
 
 phases:
   architecture:
-    status: pending
-    owner_notes: []
-    outputs_present: []
-    open_questions: []
-    carry_forward: []
+    status: complete
+    owner_notes:
+      - "Sync-loop-inside-async-gateway is the central portability hazard. AIAgent.run_conversation() is a blocking while-loop with sequential tool dispatch but lives inside an asyncio gateway running 18+ platform listeners. Any port must choose between preserving blocking-by-design or carefully translating to coroutines without losing the prompt-cache invariant."
+      - "Three config loaders + one runtime hub + two message guards is a coupling cluster. load_cli_config() / load_config() / direct YAML in gateway, plus model_tools.py whose import side-effect drives plugin discovery, plus _pending_messages + command-interceptor double-guard — flagged in AGENTS.md and routed to defect-scan-mechanical / defect-scan-semantic."
+      - "Surface area is wide but priority is clear. ~6 core components (AIAgent loop, tool registry, provider adapters, terminal backends, file/code tools, memory). ~10 important. 18+ messaging platforms and 6 terminal backends are bulk LOC but each independently portable; agent loop and tool registry are the irreducible kernel."
+    outputs_present:
+      - findings/architecture/architecture-map.md
+      - findings/public-surfaces/public-surfaces.md
+      - findings/runtime-lifecycle/runtime-lifecycle.md
+      - findings/state-and-storage/state-and-storage.md
+      - findings/build-and-deploy/build-and-deploy.md
+      - findings/config-model/config-model.md
+    open_questions:
+      - {id: arch-OQ1, kind: open-question, description: "Shutdown ordering across asyncio gateway listeners and the blocking AIAgent.run_conversation() loop is unclear. No single 'cancel and drain' path observed."}
+      - {id: arch-OQ2, kind: open-question, description: "acp_registry/ runtime behavior — how the registry is populated and queried at runtime, and whether it is in-memory only or persisted."}
+      - {id: arch-OQ3, kind: open-question, description: "cli.py (root) vs hermes_cli/ — apparent legacy/active overlap. Which is the live entrypoint and what does cli.py preserve for backward compat?"}
+      - {id: arch-OQ4, kind: open-question, description: "gateway/session.py concurrency primitive — asyncio.Lock vs threading.Lock vs unguarded shared state. Determines whether ports need locking discipline."}
+      - {id: arch-OQ5, kind: open-question, description: "web/ api_server agent-reuse pattern — does it instantiate a fresh AIAgent per request, share one process-wide, or pool? Affects port concurrency model."}
+    carry_forward:
+      - {id: arch-CF1, kind: defer-to-phase, target_phase: contracts, description: "Full slash-command catalog: enumerate every /command surface (CLI, gateway-side, terminal-backend) with trigger, args, side effects."}
+      - {id: arch-CF2, kind: defer-to-phase, target_phase: protocols, description: "RPC schemas — MCP server endpoints, ACP adapter wire format, gateway↔platform message envelopes; document required/optional fields, error cases, ordering."}
+      - {id: arch-CF3, kind: defer-to-phase, target_phase: protocols, description: "Persistent schemas — session files, sqlite/asyncpg tables, JSONL trajectory format, prompt-cache layout; append-only vs mutable, replay/resume semantics."}
+      - {id: arch-CF4, kind: defer-to-phase, target_phase: protocols, description: "Gateway state machine — listener lifecycle, session resume after disconnect, retry/backoff state, message dedup state."}
+      - {id: arch-CF5, kind: defer-to-phase, target_phase: defect-scan-mechanical, description: "_last_resolved_tool_names global in agent/ or model_tools.py — flag as cross-call shared mutable state; check for thread-safety / re-entrancy hazards."}
+      - {id: arch-CF6, kind: defer-to-phase, target_phase: defect-scan-mechanical, description: "Plugin-discovery side-effect on import of model_tools.py — flag as import-order dependency / startup-cost hazard."}
+      - {id: arch-CF7, kind: defer-to-phase, target_phase: defect-scan-mechanical, description: "ANSI escape leak suspected in terminal backends — verify whether escape sequences from one backend can leak into other surfaces (logs, transcripts, gateway streams)."}
+      - {id: arch-CF8, kind: defer-to-phase, target_phase: defect-scan-semantic, description: "Two-guard concurrency: _pending_messages + command-interceptor — verify both guards converge on a single canonical 'message in flight' invariant; TOCTOU risk if they disagree."}
+      - {id: arch-CF9, kind: defer-to-phase, target_phase: defect-scan-semantic, description: "Prompt-cache invariant — verify the cache key is stable across tool-call insertions and that compaction/summarization paths preserve cache hit rate."}
+      - {id: arch-CF10, kind: defer-to-phase, target_phase: porting, description: "167KB auxiliary_client.py consolidation — concept-level decomposition into smaller responsibility-aligned modules in the port."}
+      - {id: arch-CF11, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Platform MVP cut — recommend which subset of 18+ messaging platforms is in 'minimum viable port' tier vs 'major-workflow parity' vs 'full parity'."}
+
   defect-scan-mechanical:
     status: pending
     owner_notes: []
@@ -48,4 +74,6 @@ phases:
     carry_forward: []
 
 next_actions:
-  - Run architecture phase against hermes-agent source tree
+  - Run defect-scan-mechanical, contracts, and protocols in parallel; each depends only on architecture which is now complete.
+  - Each parallel subagent reads architecture-map.md + its own SKILL.md + carry_forward entries whose target_phase matches its phase.
+  - Orchestrator serializes status.yaml writes after each parallel phase returns.
