@@ -38,3 +38,4 @@ grep -E '^- [0-9]{4}-[0-9]{2}-[0-9]{2}' .codecarto/THREAD_LOG.md | sort | uniq -
 - 2026-05-06 - contracts - 34 feature contracts + 12 acceptance scenarios + 58-slash-command catalog (resolves arch-CF1); PASS WITH GAPS - [closeout](closeouts/2026-05-06-contracts.md)
 - 2026-05-06 - protocols - 6 state machines + 19+ events + 10 persistent schemas + 18 hazards (~45 KB); resolves arch-CF2/3/4; PASS - [closeout](closeouts/2026-05-06-protocols.md)
 - 2026-05-06 - defect-scan-semantic - 19 findings (2 crit/8 high/7 med/2 low) across passes 3+4+5; resolved all 16 pre-loaded carry-forwards (3 with porting deferrals); PASS WITH GAPS - [closeout](closeouts/2026-05-06-defect-scan-semantic.md)
+- 2026-05-06 - porting - reverse-engineering-bundle.md (22.9 KB) + defect-fix-tracker.md (12 rows) + 5 secondary appends; resolves 9 carry-forwards; tier recommendations; PASS WITH GAPS - [closeout](closeouts/2026-05-06-porting.md)

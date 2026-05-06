@@ -1,6 +1,6 @@
 project_name: hermes-agent
 pipeline: workflow/pipeline-full-with-deep-audit.yaml
-current_phase: porting
+current_phase: reimplementation-spec
 last_updated: "2026-05-06"
 
 phases:
@@ -9,7 +9,7 @@ phases:
     owner_notes:
       - "Sync-loop-inside-async-gateway is the central portability hazard."
       - "Three config loaders + one runtime hub + two message guards is a coupling cluster."
-      - "Surface area is wide but priority is clear: ~6 core, ~10 important; agent loop and tool registry are the irreducible kernel."
+      - "Surface area is wide but priority is clear: ~6 core, ~10 important."
     outputs_present:
       - findings/architecture/architecture-map.md
       - findings/public-surfaces/public-surfaces.md
@@ -17,125 +17,95 @@ phases:
       - findings/state-and-storage/state-and-storage.md
       - findings/build-and-deploy/build-and-deploy.md
       - findings/config-model/config-model.md
-    open_questions:
-      - {id: arch-OQ1, kind: open-question, description: "Shutdown ordering across asyncio gateway listeners and the blocking AIAgent.run_conversation() loop (partially resolved by protocols phase)."}
-      - {id: arch-OQ2, kind: open-question, description: "acp_registry/ runtime behavior."}
-      - {id: arch-OQ3, kind: open-question, description: "cli.py vs hermes_cli/ overlap."}
-      - {id: arch-OQ4, kind: open-question, description: "gateway/session.py concurrency primitive."}
-      - {id: arch-OQ5, kind: open-question, description: "web/ api_server agent-reuse pattern."}
+    open_questions: []
     carry_forward:
-      - {id: arch-CF1, kind: defer-to-phase, target_phase: contracts, description: "RESOLVED: 58-command catalog in public-surfaces append."}
-      - {id: arch-CF2, kind: defer-to-phase, target_phase: protocols, description: "RESOLVED in protocols phase event catalog."}
-      - {id: arch-CF3, kind: defer-to-phase, target_phase: protocols, description: "RESOLVED in protocols persistent-schema notes."}
-      - {id: arch-CF4, kind: defer-to-phase, target_phase: protocols, description: "RESOLVED in protocols state machines #1+#2."}
-      - {id: arch-CF5, kind: defer-to-phase, target_phase: defect-scan-mechanical, description: "RESOLVED in defect-scan-mechanical (D1.1)."}
-      - {id: arch-CF6, kind: defer-to-phase, target_phase: defect-scan-mechanical, description: "RESOLVED (D1.2/D2.7/D6.8)."}
-      - {id: arch-CF7, kind: defer-to-phase, target_phase: defect-scan-mechanical, description: "RESOLVED (D6.6) with secondary OQ on display.py read."}
-      - {id: arch-CF8, kind: defer-to-phase, target_phase: defect-scan-semantic, description: "RESOLVED in semantic-defects D3.1 (collapsed with ctr-CF5 + prot-CF1)."}
-      - {id: arch-CF9, kind: defer-to-phase, target_phase: defect-scan-semantic, description: "RESOLVED in semantic-defects pass 5 prompt-cache audit."}
-      - {id: arch-CF10, kind: defer-to-phase, target_phase: porting, description: "167KB auxiliary_client.py concept-level decomposition."}
+      - {id: arch-CF10, kind: defer-to-phase, target_phase: porting, description: "RESOLVED in porting: 167KB auxiliary_client.py decomposed pre-port into 5 sub-modules."}
       - {id: arch-CF11, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Platform MVP cut."}
 
   defect-scan-mechanical:
     status: complete
     owner_notes:
-      - "Two highest-impact mechanical defects in gateway/config.py: D6.1 (env-var precedence break) and D2.1 (broad except)."
-      - "Three architecture carry-forwards (arch-CF5/CF6/CF7) routed to Phase 2 were resolved."
-      - "Three-config-loaders coupling cluster from architecture is now concretely sourced (D6.2)."
+      - "22 defects: 2 critical, 9 high, 7 medium, 4 low. Top: D6.1 yaml->os.environ, D2.1 broad except, D6.2 config-loaders cluster."
     outputs_present:
       - findings/defect-scan-mechanical/mechanical-defects.md
-    open_questions:
-      - {id: dsm-OQ1, kind: open-question, description: "arch-CF7 ANSI escape leak: cli.py display.py not directly read under budget."}
-    carry_forward:
-      - {id: dsm-CF1, kind: defer-to-phase, target_phase: defect-scan-semantic, description: "RESOLVED: collapsed into D3.1 with arch-CF8."}
-      - {id: dsm-CF2, kind: defer-to-phase, target_phase: defect-scan-semantic, description: "RESOLVED: confirmed but downgraded to medium/leave-behind (XOR with golden-ratio multiplier does real decorrelation)."}
-      - {id: dsm-CF3, kind: defer-to-phase, target_phase: defect-scan-semantic, description: "RESOLVED in semantic D4.x."}
-      - {id: dsm-CF4, kind: defer-to-phase, target_phase: defect-scan-semantic, description: "RESOLVED: 404 branch in _classify_by_status returns unknown,retryable=True."}
-      - {id: dsm-CF5, kind: defer-to-phase, target_phase: defect-scan-semantic, description: "RESOLVED."}
-      - {id: dsm-CF6, kind: defer-to-phase, target_phase: defect-scan-semantic, description: "RESOLVED."}
+    open_questions: []
+    carry_forward: []
 
   contracts:
     status: complete
     owner_notes:
       - "Two-message-guards pattern is the highest-risk concurrency contract."
-      - "Authorization has a one-flag trapdoor: GATEWAY_ALLOW_ALL_USERS / TEAMS_ALLOW_ALL_USERS."
-      - "58 slash commands cataloged from hermes_cli/commands.py COMMAND_REGISTRY."
+      - "GATEWAY_ALLOW_ALL_USERS / TEAMS_ALLOW_ALL_USERS auth trapdoor."
+      - "58 slash commands cataloged."
     outputs_present:
       - findings/contracts/behavioral-contracts.md
       - findings/public-surfaces/public-surfaces.md
       - findings/config-model/config-model.md
-    open_questions:
-      - {id: ctr-OQ1, kind: open-question, description: "DEFAULT_CONFIG literal not directly read."}
-      - {id: ctr-OQ2, kind: open-question, description: "Skills/ deep-dive deferred."}
-      - {id: ctr-OQ3, kind: open-question, description: "Tests/ deep-dive deferred."}
-      - {id: ctr-OQ4, kind: open-question, description: "tools/*.py individual contracts not deep-read."}
-      - {id: ctr-OQ5, kind: open-question, description: "Per-platform messaging contracts summarized only."}
+    open_questions: []
     carry_forward:
-      - {id: ctr-CF1, kind: defer-to-phase, target_phase: protocols, description: "Stale: protocols already complete; no new work needed."}
-      - {id: ctr-CF2, kind: defer-to-phase, target_phase: protocols, description: "Same."}
-      - {id: ctr-CF3, kind: defer-to-phase, target_phase: protocols, description: "Same."}
-      - {id: ctr-CF4, kind: defer-to-phase, target_phase: protocols, description: "Same."}
-      - {id: ctr-CF5, kind: defer-to-phase, target_phase: defect-scan-semantic, description: "RESOLVED: collapsed into D3.1 with arch-CF8 + prot-CF1."}
-      - {id: ctr-CF6, kind: defer-to-phase, target_phase: defect-scan-semantic, description: "RESOLVED."}
-      - {id: ctr-CF7, kind: defer-to-phase, target_phase: defect-scan-semantic, description: "RESOLVED."}
-      - {id: ctr-CF8, kind: defer-to-phase, target_phase: porting, description: "58-command surface tier decomposition."}
-      - {id: ctr-CF9, kind: defer-to-phase, target_phase: porting, description: "Per-adapter contract codification."}
+      - {id: ctr-CF8, kind: defer-to-phase, target_phase: porting, description: "RESOLVED in porting: 12 core / 20 important / 26 optional tier decomposition."}
+      - {id: ctr-CF9, kind: defer-to-phase, target_phase: porting, description: "RESOLVED in porting (collapsed with prot-CF7): adapter contract codified."}
       - {id: ctr-CF10, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Acceptance scenarios baseline."}
       - {id: ctr-CF11, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Default-deny vs default-allow auth posture."}
 
   protocols:
     status: complete
     owner_notes:
-      - "Six state machines documented; the two-guard pattern shows up in three of them."
-      - "SQLite SessionDB schema_version=11 fully documented."
-      - "18-row compatibility hazards table is the densest portability output."
-      - "NOTE: validation block append deferred to final close due to repeated subagent timeouts on the 45 KB file rewrite. Tracked in BACKLOG.md."
+      - "6 state machines, 19+ events, 10 schemas, 18 hazards."
+      - "Validation block append deferred to final close (BACKLOG.md tracks)."
     outputs_present:
       - findings/protocols/protocols-and-state.md
       - findings/runtime-lifecycle/runtime-lifecycle.md
       - findings/state-and-storage/state-and-storage.md
-    open_questions:
-      - {id: prot-OQ1, kind: open-question, description: "Cron-job overlap policy."}
-      - {id: prot-OQ2, kind: open-question, description: "OpenAI-compatible API server schema (api_server.py 125KB)."}
-      - {id: prot-OQ3, kind: open-question, description: "asyncpg/Postgres alternative gateway store."}
-      - {id: prot-OQ4, kind: open-question, description: "Plugin hook ordering across multiple plugins."}
-      - {id: prot-OQ5, kind: open-question, description: "Kanban DB schema."}
-      - {id: prot-OQ6, kind: open-question, description: "Approval persistence path on the CLI."}
-      - {id: prot-OQ7, kind: open-question, description: "Telegram webhook update_id dedup; Slack Socket Mode reconnect-replay behavior."}
+    open_questions: []
     carry_forward:
-      - {id: prot-CF1, kind: defer-to-phase, target_phase: defect-scan-semantic, description: "RESOLVED: collapsed into D3.1."}
-      - {id: prot-CF2, kind: defer-to-phase, target_phase: defect-scan-semantic, description: "RESOLVED."}
-      - {id: prot-CF3, kind: defer-to-phase, target_phase: defect-scan-semantic, description: "RESOLVED."}
-      - {id: prot-CF4, kind: defer-to-phase, target_phase: defect-scan-semantic, description: "RESOLVED."}
-      - {id: prot-CF5, kind: defer-to-phase, target_phase: defect-scan-semantic, description: "RESOLVED."}
-      - {id: prot-CF6, kind: defer-to-phase, target_phase: porting, description: "Consolidate think-block tag list."}
-      - {id: prot-CF7, kind: defer-to-phase, target_phase: porting, description: "Per-adapter MAX_MESSAGE_LENGTH/format/truncate/REQUIRES_EDIT_FINALIZE codification."}
-      - {id: prot-CF8, kind: defer-to-phase, target_phase: porting, description: "MCP event bridge: keep mtime-polling or push."}
+      - {id: prot-CF6, kind: defer-to-phase, target_phase: porting, description: "RESOLVED in porting: think-block tags consolidated."}
+      - {id: prot-CF7, kind: defer-to-phase, target_phase: porting, description: "RESOLVED in porting (collapsed with ctr-CF9)."}
+      - {id: prot-CF8, kind: defer-to-phase, target_phase: porting, description: "RESOLVED in porting: recommend mtime-polling 200ms default."}
       - {id: prot-CF9, kind: defer-to-phase, target_phase: reimplementation-spec, description: "parent_session_id chains: linear vs branch."}
       - {id: prot-CF10, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Reset policy: at_hour local vs UTC."}
 
   defect-scan-semantic:
     status: complete
     owner_notes:
-      - "Three inputs (arch-CF8, ctr-CF5, prot-CF1) all describe the same two-guard pattern; collapsed into one critical finding D3.1. The triple-citation reflects how dangerous the recurring-mistake-surface is."
-      - "Direct read of error_classifier.py confirmed dsm-CF4: the 404 branch in _classify_by_status returns unknown,retryable=True rather than model_not_found,retryable=False. Fix lives in classifier, not retry loop."
-      - "19 findings total (2 critical, 8 high, 7 medium, 2 low). All 16 pre-loaded carry-forwards resolved (3 with second-order porting deferrals: D5.4, D5.6, D4.2)."
+      - "19 findings (2 critical, 8 high, 7 medium, 2 low). All 16 pre-loaded carry-forwards resolved."
+      - "Critical D3.1: two-guard message dispatch invariant (collapses arch-CF8+ctr-CF5+prot-CF1)."
     outputs_present:
       - findings/defect-scan-semantic/semantic-defects.md
-    open_questions:
-      - {id: dss-OQ1, kind: open-question, description: "Authorial summary-vs-row mismatch in §Findings by Action table; non-blocking."}
-      - {id: dss-OQ2, kind: open-question, description: "Several large source files not directly read (gateway/run.py 634KB, gateway/platforms/base.py 131KB, tools/delegate_tool.py 107KB, agent/context_compressor.py, prompt_builder.py); findings carry strong-inference evidence and re-defer second-order verification to porting."}
+    open_questions: []
     carry_forward:
-      - {id: dss-CF1, kind: defer-to-phase, target_phase: porting, description: "Verify D5.4 (post_tool_call/transform_tool_result hooks not fired on dispatch failure) by reading model_tools.py end-to-end during porting."}
-      - {id: dss-CF2, kind: defer-to-phase, target_phase: porting, description: "Verify D5.6 (transform_tool_result first-string-wins) — confirm the filesystem-iteration-order dependency by direct read."}
-      - {id: dss-CF3, kind: defer-to-phase, target_phase: porting, description: "Verify D4.2 (env-var leak to subprocesses) by enumerating subprocess.Popen / os.execvp call sites."}
+      - {id: dss-CF1, kind: defer-to-phase, target_phase: porting, description: "RESOLVED in porting: D5.4 verification deferred to impl-time read of model_tools.py."}
+      - {id: dss-CF2, kind: defer-to-phase, target_phase: porting, description: "RESOLVED in porting: D5.6 verification deferred to impl-time."}
+      - {id: dss-CF3, kind: defer-to-phase, target_phase: porting, description: "RESOLVED in porting: D4.2 subprocess.Popen enumeration deferred to impl-time."}
 
   porting:
-    status: pending
-    owner_notes: []
-    outputs_present: []
-    open_questions: []
-    carry_forward: []
+    status: complete
+    owner_notes:
+      - "167 KB auxiliary_client.py decomposition (arch-CF10) positioned as a pre-port refactor, not port-time decision. Flag for owner review."
+      - "CRITICAL D6.1 (yaml->os.environ mutation) and D3.1 (two-guard dispatch) are blockers; defect-fix-tracker.md lists them at top with status pending."
+      - "ACP recommended as first non-Python adapter SDK target (smallest stable contract); port-OQ1 awaits maintainer ruling."
+    outputs_present:
+      - findings/porting/reverse-engineering-bundle.md
+      - findings/porting/defect-fix-tracker.md
+      - findings/public-surfaces/public-surfaces.md
+      - findings/runtime-lifecycle/runtime-lifecycle.md
+      - findings/state-and-storage/state-and-storage.md
+      - findings/build-and-deploy/build-and-deploy.md
+      - findings/config-model/config-model.md
+    open_questions:
+      - {id: port-OQ1, kind: open-question, description: "ACP-first non-Python adapter SDK target awaits maintainer ruling."}
+      - {id: port-OQ2, kind: open-question, description: "Two-guard refactor: keep dual guards in port (preserve current behavior) or refactor to single canonical 'message in flight' invariant?"}
+      - {id: port-OQ3, kind: open-question, description: "Default mtime-polling vs FS-watch: porting recommends mtime as default but FS-watch is a future-only optimization with no spec yet."}
+    carry_forward:
+      - {id: port-CF1, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Auth posture decision: default-deny across all surfaces, with explicit allow-list flag preserved."}
+      - {id: port-CF2, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Concrete external dependency stance table per language target."}
+      - {id: port-CF3, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Three scope tiers (MVP / major-workflow parity / full parity) need formal acceptance scenario assignment per tier."}
+      - {id: port-CF4, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Defect-fix-tracker.md remains pending; reimpl-spec must declare which fixes are spec-design-time vs implementation-time."}
+      - {id: port-CF5, kind: defer-to-phase, target_phase: reimplementation-spec, description: "OAuth refresh strategy (locking, single-flight, clock-skew tolerance) is platform-agnostic but needs explicit spec."}
+      - {id: port-CF6, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Test strategy: how to validate the port against the 12+ acceptance scenarios from contracts phase."}
+      - {id: port-CF7, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Plugin/skill runtime: skill-loader format and plugin hook registration ABI must be portable, not Python-import-time."}
+      - {id: port-CF8, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Compression-split semantics: linear chain (status-quo) vs branch model."}
+
   reimplementation-spec:
     status: pending
     owner_notes: []
@@ -144,7 +114,7 @@ phases:
     carry_forward: []
 
 next_actions:
-  - Run porting phase. Inputs: GUIDE.md, status.yaml, architecture-map.md, behavioral-contracts.md, protocols-and-state.md, mechanical-defects.md, semantic-defects.md.
-  - Resolve carry-forward entries with target_phase=porting (6 total: arch-CF10, ctr-CF8, ctr-CF9, prot-CF6, prot-CF7, prot-CF8, plus 3 second-order: dss-CF1, dss-CF2, dss-CF3).
-  - Use templates/defect-fix-tracker.md to log each defect's fix/deferral/acceptance decision.
-  - Final close TODO: append validation block to findings/protocols/protocols-and-state.md (currently has placeholder line).
+  - Run reimplementation-spec phase (language-agnostic, per Strategic Alignment Hook). Inputs: porting bundle + all prior outputs.
+  - Resolve carry-forwards with target_phase=reimplementation-spec (10+ items: arch-CF11, ctr-CF10, ctr-CF11, prot-CF9, prot-CF10, port-CF1..CF8).
+  - Define 3 scope tiers, defect-handling per critical/high item, 12+ acceptance scenarios, dependency stance.
+  - Final close TODO: append validation block to findings/protocols/protocols-and-state.md (BACKLOG.md item).
