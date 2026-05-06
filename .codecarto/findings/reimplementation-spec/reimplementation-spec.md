@@ -431,3 +431,19 @@ Items routed to this phase that have been resolved here:
 - **Postgres performance spike** (KU-6): Tier-3 write-fanout test with N concurrent sessions.
 
 ---
+
+## Validation
+
+| # | Criterion | Result | Evidence |
+|---|-----------|--------|----------|
+| 1 | Concept-level modules are defined. | PASS | §Conceptual Module Model: 11 concept-named modules (Agent Kernel, Provider Normalization Layer, Tool Registry, Session Store, Messaging Gateway, Platform Adapters, Delivery Surfaces, Scheduler, Authorization Policy, Configuration Loader, Skills Runtime), each with responsibility / inputs / outputs / state / invariants / collaborators; Layer Split assigns each to core / adapter / surface. |
+| 2 | Required behaviors are stated. | PASS | §Required Behaviors lists RB-1..RB-22 with evidence tags; behaviors are derived from Phase 3 contracts and cross-referenced from acceptance scenarios. |
+| 3 | Protocol and persisted state expectations are stated. | PASS | §Protocols and Persisted State documents wire formats (MCP, ACP, chat platforms, web, internal provider call shape, tool result shape), persisted state (relational session DB, atomic-replace sessions index, JSONL legacy, trajectory JSON), session-lifecycle state machine, and the prompt-cache byte-stability invariant. |
+| 4 | Acceptance scenarios and known unknowns are included. | PASS | §Acceptance Scenarios (14 black-box scenarios AS-1..AS-14 with concrete inputs and observable outputs, citing RB and CTR IDs); §Known Unknowns (KU-1..KU-10) and §Spike List. |
+| 5 | Defects identified in either scan are explicitly designed-around or noted as "left behind", with the choice cited. | PASS | §Defect Handling: 18 entries covering 3 critical defects (D6.1, D3.1, D5.x) + 12 fix-before-porting tracker items (D-mech-01..04, D-sem-01..06, D-port-01..02) + 3 left-behind items (D-port-03..05). Each cites the §invariant, RB, PH, or AS that addresses it. |
+| 6 | Findings are marked with evidence levels. | PASS | Evidence legend defined at top (`OF`/`SI`/`PH`/`OQ`); applied throughout System Summary, Required Behaviors, Protocols and Persisted State, Portability Hazards, and the conceptual module invariants. |
+
+**Validated by:** 2026-05-06 (reimplementation-spec phase, session `claude/codecarto-hermes-analysis-abvQm`)
+**Overall:** PASS WITH GAPS
+
+**Gap notes:** All criteria PASS. The PASS WITH GAPS classification reflects that 10 Known Unknowns (KU-1..KU-10) and 3 post-pipeline carry-forwards (RIS-CF1..3) remain open by design — they require runtime spikes or maintainer decisions that no later pipeline phase can close. These are tracked under §Known Unknowns and §Carry-Forward (post-pipeline). The phase is complete; downstream port work owns these spikes.
