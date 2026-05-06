@@ -172,3 +172,20 @@ Full catalog in `findings/state-and-storage/state-and-storage.md`. Headlines:
 | arch-CF9 | defect-scan-semantic | Prompt-cache invariant: "do not alter past context, change toolsets, or rebuild system prompts mid-conversation" — easy to violate via slash-command implementations. | Semantic invariant tied to LLM cost behavior. |
 | arch-CF10 | porting | Porting hazard: `auxiliary_client.py` is 167KB; consolidating multi-provider auxiliary calls cleanly is non-trivial. Capture target-language design before writing. | Porting phase rubric. |
 | arch-CF11 | reimplementation-spec | Decision: which of the 18+ messaging platforms make the MVP cut for a re-implementation, and which become later-phase ports. | Decision rests on the reimplementation-spec strategic alignment hook. |
+
+---
+
+## Validation
+
+| # | Criterion | Result | Evidence |
+|---|-----------|--------|----------|
+| 1 | The system intent is documented. | PASS | §System Intent (one paragraph covering what, who-for, problem-solved, differentiators). |
+| 2 | The layer map and dependency direction are documented. | PASS | §Layer Map → Package Inventory table (covers all required packages: agent, tools, gateway, hermes_cli, skills, plugins, cron, acp_adapter, acp_registry, web, environments, plus tools/environments, ui-tui, tui_gateway, top-level modules). §Layer Map → Dependency Direction lists 6 layers low→high and explicitly calls out cycles (model_tools as runtime hub, `_last_resolved_tool_names` global, two-guard pattern, hermes_cli/main.py wrapper status). |
+| 3 | Public surfaces are identified. | PASS | §Public Surfaces enumerates CLI binaries, hermes subcommands, slash commands, network/RPC interfaces, file formats, with headline list in primary and full enumeration in `findings/public-surfaces/public-surfaces.md`. |
+| 4 | Runtime lifecycle, concurrency model, and porting priorities are summarized. | PASS | §Runtime Lifecycle (boot per surface, agent loop body, gateway loop, shutdown). §Concurrency Model (sync agent / async gateway split, two-guard pattern, credential pool, profile token locks, process-global hazards). §Porting Priorities table has 25+ rows across `core`/`important`/`optional`/`incidental` (above the 12-row floor). |
+| 5 | Findings are marked with evidence levels. | PASS | All material claims annotated with `observed fact`, `strong inference`, `portability hazard`, or `open question`. Open questions also recorded in §Open Questions table; deferrals tracked in §Carry-Forward table with explicit `target_phase`. |
+
+**Validated by:** 2026-05-06 (architecture phase, codecarto session for hermes-agent)
+**Overall:** PASS
+
+Notes on completeness: 5 entries in §Open Questions reflect honest gaps tied to the 30-file read budget (notably arch-OQ1 shutdown ordering, arch-OQ4 session-queue concurrency primitives, arch-OQ5 api_server agent reuse). 11 entries in §Carry-Forward route deferred work to the appropriate downstream phase. No criterion is FAIL or PARTIAL given the rubric's wording — depth gaps belong in the open-questions / carry-forward lists per the validation guide's "PARTIAL only when the criterion itself is unmet" rule.
