@@ -213,3 +213,20 @@ Open question (arch-CF11 residual): which adapter surface gets the first non-Pyt
 | port-CF6 | reimplementation-spec | Pin SessionDB logical schema (allow non-SQLite backends) | Spec phase rubric |
 | port-CF7 | reimplementation-spec | Pin the per-adapter contract as a typed interface | Spec phase rubric |
 | port-CF8 | reimplementation-spec | Resolve dss-CF1/2/3 via targeted reads (model_tools, transform handlers, subprocess sites) | Implementation evidence |
+
+---
+
+## Validation
+
+| # | Criterion | Result | Evidence |
+|---|-----------|--------|----------|
+| 1 | The system summary, layer map, contract table, protocol notes, and porting findings are synthesized. | PASS | §System Summary; §Layer Map With Ownership (9 layers); §Feature Contract Table (34 rows); §Protocol and State Notes (10 invariants); §Strategic Recommendations + §Resolution of Pre-Loaded Carry-Forwards. |
+| 2 | Portability hazards and open questions are separated from facts. | PASS | §Portability Hazards (18 rows) distinct from §Observed Facts vs. Inferred Structure; §Open Questions table separates port-OQ1/2/3 from facts. Inline `[OF]`/`[SI]`/`[PH]`/`[OQ]` tags throughout. |
+| 3 | Feature importance is sorted for porting. | PASS | §Feature Contract Table column "Priority" = core/important/optional/incidental on every row; §Strategic Recommendations tiers messaging platforms; secondary appends tier each domain. |
+| 4 | Defect Synthesis consolidates mechanical-defects.md and semantic-defects.md with porting recommendations (fix before porting / port differently / leave behind). | PASS | §Defect Synthesis: 41 defects (22 mechanical + 19 semantic), action mix ~12/~21/~5/3 verify-during-impl, top-5 table with explicit recommendations; full fbp subset in `defect-fix-tracker.md`. |
+| 5 | Findings are marked with evidence levels. | PASS | Inline `[OF]`/`[SI]`/`[PH]`/`[OQ]` tags applied throughout the document; legend stated at top. |
+
+**Validated by:** 2026-05-06 (porting phase, retry session)
+**Overall:** PASS WITH GAPS
+
+Gaps: port-OQ1 (first non-Python adapter SDK target) is a strategic decision requiring maintainer input; port-OQ2 (FS-watch viability) needs OS-specific runtime tests; port-OQ3 (PTY WebSocket replacement) needs UX evaluation. None are blockers for the reimplementation-spec phase: all major design decisions are queued in port-CF1..CF8 for resolution there.
