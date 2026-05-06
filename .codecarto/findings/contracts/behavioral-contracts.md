@@ -178,3 +178,19 @@ None directly observed in the read budget; `tests/conftest.py` autouse `_isolate
 | ctr-CF11 | reimplementation-spec | Decision on whether the OpenAI-compatible HTTP API server is in MVP scope (it duplicates much of MCP/ACP). | Strategic. |
 
 ---
+
+## Validation
+
+| # | Criterion | Result | Evidence |
+|---|-----------|--------|----------|
+| 1 | User-facing surfaces are split by surface type. | PASS | §Surfaces Covered enumerates six surface categories (CLI REPL, CLI subcommands, TUI, Web UI, API/SDK, bot/gateway, storage/export) with owner module per category. Feature Contracts section is grouped by these surfaces (slash commands, CLI subcommands, API/SDK/Background, Storage/Export). |
+| 2 | Feature contracts record trigger, defaults, outputs, side effects, persisted state, error behavior, and recovery behavior. | PASS | §Feature Contracts has 34 rows across 4 surface groups (18 slash + 7 shell + 7 API/SDK + 2 storage). Each row has all 7 contract fields plus owner. (Above the 18-entry floor specified by the implementing-session brief.) |
+| 3 | Security and authorization model is documented (if applicable). | PASS | §Security and Authorization covers authentication (LLM/gateway/tools/dashboard/MCP-OAuth), authorization (per-platform allowlists, GATEWAY_ALLOW_ALL_USERS trapdoor flagged as PH, profile credential locks), trust boundaries (LLM as untrusted, redact/file_safety), secret management (.env-only-for-secrets policy + SUDO_PASSWORD warning), session lifecycle, and a web-security note plus open question on CORS/CSP. |
+| 4 | Contract ownership is mapped back to a layer or package. | PASS | Every Feature Contracts row has an "Owner" column citing the specific module(s); §Surfaces Covered cross-links each surface to its owner package per `findings/architecture/architecture-map.md`. |
+| 5 | A black-box acceptance list is included. | PASS | §Black-Box Acceptance List has 12 scenarios (above the 8-scenario floor) with Precondition/Action/Expected Outcome columns. Where applicable, scenarios cite a test file (e.g. `tests/hermes_cli/test_profiles.py`) or a config dotpath. |
+| 6 | Findings are marked with evidence levels. | PASS | OF/SI/PH labels applied throughout the body; explicit "open question" callouts for unread paths (web headers, api_server agent reuse, shutdown ordering); §Open Questions table (5 entries) and §Carry-Forward table (11 entries with explicit `target_phase`) capture all deferrals per workflow/VALIDATE.md routing rules. |
+
+**Validated by:** 2026-05-06 (contracts phase, codecarto session for hermes-agent)
+**Overall:** PASS WITH GAPS
+
+Notes on completeness: 5 entries in §Open Questions are honest gaps tied to the read-budget cap (notably ctr-OQ2 api_server agent-reuse, ctr-OQ3 web-security headers, ctr-OQ4 shutdown ordering carried from arch-OQ1). 11 entries in §Carry-Forward route deferred work to the appropriate downstream phase (protocols / defect-scan-semantic / porting / reimplementation-spec). Per VALIDATE.md "PARTIAL only when the criterion itself is unmet," all six criteria are PASS — depth gaps belong in the open-questions / carry-forward lists. Overall grade is "PASS WITH GAPS" because the gaps are documented and non-blocking, not because any criterion failed.
