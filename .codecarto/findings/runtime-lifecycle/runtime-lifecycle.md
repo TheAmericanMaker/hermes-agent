@@ -101,3 +101,75 @@ while (api_call_count < max_iterations and iteration_budget.remaining > 0) or _b
 - Memory curator (`agent/curator.py`) runs periodic memory consolidation.
 - Title generator (`agent/title_generator.py`) generates session titles asynchronously.
 - Insights generator (`agent/insights.py`) builds usage analytics.
+
+## 2026-05-06 — protocols phase
+
+This section appends event-ordered detail derived from direct reads of `mcp_serve.py`, `acp_adapter/entry.py`, `gateway/session.py`, `gateway/stream_consumer.py`, `gateway/config.py` (Platform/SessionResetPolicy/HomeChannel), `gateway/platforms/telegram.py` (sample adapter), and grep-extracted method names from `tui_gateway/server.py`. Together they resolve part of arch-OQ1 (shutdown / drain) and ground the gateway listener lifecycle and agent-turn anatomy used in `findings/protocols/protocols-and-state.md` §State Machines.
+
+### Full event-ordered boot sequence — gateway, with locks acquired
+
+*(observed fact, except where marked)*
+
+1. `hermes-agent` (or `hermes gateway start`) entry → `run_agent.main` → `gateway/run.py`.
+2. `_apply_profile_override()` sets `HERMES_HOME`. *(observed fact)*
+3. `load_hermes_dotenv(hermes_home=...)` loads `.env` from active profile. *(observed fact — `acp_adapter/entry.py` mirrors this)*
+4. `gateway/config.GatewayConfig` constructed by reading `config.yaml` raw (third config loader, separate from `hermes_cli.config.load_config` and `hermes_cli.config.load_cli_config`).
+5. `gateway/platform_registry.platform_registry` enumerates entries; for each, an adapter subclass of `BasePlatformAdapter` is instantiated.
+6. Per adapter, in order: (a) `acquire_scoped_lock(token)` from `gateway.status` — token-scoped to prevent two profiles sharing the same bot credential; (b) adapter `connect()` / `start()`; (c) registers inbound message callback into `_pending_messages` + command-interceptor pipeline.
+7. `SessionStore(sessions_dir, GatewayConfig, has_active_processes_fn)` is constructed; `_db = SessionDB()` opens `state.db` in WAL mode. *(observed fact — `gateway/session.py`)*
+8. `SessionStore.suspend_recently_active(120)` is called on startup so any session that was active within 120s of the previous gateway exit is forced to fresh state on next access — prevents resuming sessions that may have been mid-tool-call. *(observed fact)*
+9. Cron scheduler started (`cron.scheduler` + `cron.jobs`). 
+10. Stream consumer factory ready (per-turn `GatewayStreamConsumer` instances created on first stream callback).
+11. Steady-state: each platform listener pumps inbound messages.
+
+### Agent turn anatomy (deep)
+
+- Pre: `pre_llm_call` plugin hooks run.
+- Provider call: blocking. Tenacity retries on transient errors. `credential_pool` rotates keys on quota errors. `nous_rate_guard` pre-check.
+- On `response.tool_calls`: sequential dispatch (`for tool_call in response.tool_calls`) — NOT parallel even when provider supplied parallel calls. Each tool: `pre_tool_call` hook → `model_tools.handle_function_call(name, args, task_id)` → `post_tool_call` hook → `messages.append({"role":"tool","tool_call_id":..., "content": result_json_str})`.
+- Post: when `response.tool_calls` empty, `post_llm_call` hooks run; final content returned.
+- Stream callback: each token delta forwarded to `stream_delta_callback(text)` if registered; `text=None` is a tool-boundary sentinel consumed by `GatewayStreamConsumer` as `_NEW_SEGMENT`.
+- Iteration budget: hard limit at `max_iterations` (default 90) AND soft limit `iteration_budget.remaining` with one-turn grace.
+- Interrupt: checked every iteration via `_interrupt_requested` (set by gateway `/stop` interceptor).
+
+### Gateway listener lifecycle (resolves arch-CF4)
+
+States and transitions are enumerated in `findings/protocols/protocols-and-state.md` §State Machines #1. Highlights:
+
+- **Lock acquisition is fail-fast**: `acquire_scoped_lock` blocks/rejects when another profile already holds the same bot token.
+- **Drain timeout**: if a clean shutdown can't drain in-flight sessions, `mark_resume_pending(key, reason="restart_timeout")` is set so the next start preserves `session_id` and resumes the transcript intact (`clear_resume_pending` fires after the next successful turn).
+- **Suspend wins over resume**: `/stop` (or stuck-loop escalation) sets `suspended=True`; this ALWAYS forces a fresh `session_id` on next access regardless of `resume_pending`.
+- **Two-guard pattern** (portability hazard, routed to defect-scan-semantic prot-CF1): `_pending_messages` queue at adapter level + command interceptor at `gateway/run.py` for `/stop`,`/new`,`/queue`,`/status`,`/approve`,`/deny`,`/platforms`,`/sethome` — every new control command MUST bypass BOTH.
+
+### Stream consumer lifecycle (per turn)
+
+*(observed fact — `gateway/stream_consumer.py`)*
+
+- Sentinels: `_DONE`, `_NEW_SEGMENT`, `_COMMENTARY`.
+- `_message_id` may be `None` (no message yet) | a real id | `__no_edit__` (platform accepted the send but returned no editable id; subsequent text goes via `_send_fallback_final`).
+- Adaptive flood backoff: `_current_edit_interval *= 2` cap 10s; after 3 strikes `_edit_supported = False` and consumer enters fallback.
+- Fresh-final: when `fresh_final_after_seconds > 0` and a preview has been visible long enough, the final edit is replaced by a fresh send + best-effort delete of the old preview, so the platform timestamp reflects completion (port of openclaw#72038).
+- `<think>` / `<reasoning>` / `<REASONING_SCRATCHPAD>` block filter: state machine with `outside_think` / `inside_think` / `partial_tag_held` (boundary-aware to avoid false positives in prose). Tag list duplicated in `cli.py`, `run_agent.py`, `gateway/stream_consumer.py` — portability hazard prot-CF6.
+
+### Shutdown sequence (resolves part of arch-OQ1)
+
+*(strong inference, since the exact code path inside 634KB `gateway/run.py` was not read end-to-end; corroborated by `gateway/session.py` `suspend_recently_active` and `mark_resume_pending` semantics)*
+
+Probable order:
+
+1. SIGTERM / KeyboardInterrupt received in `gateway/run.py` main loop.
+2. Each platform adapter is asked to stop accepting new inbound (listener task cancel).
+3. In-flight `GatewaySession` turns are awaited; on drain timeout, `SessionStore.mark_resume_pending(session_key, reason="restart_timeout")` per stuck session.
+4. Cron scheduler stopped.
+5. Each adapter's `disconnect()` releases its scoped credential lock via `gateway.status.release_scoped_lock`.
+6. `SessionDB` writers flushed (WAL checkpoint implicit at process exit).
+7. Process exits.
+
+*(open question prot-OQ-shutdown-precise: exact ordering of credential-pool flush vs scoped-lock release vs DB checkpoint — defer to defect-scan-semantic if a defect surfaces.)*
+
+### Restart / resume semantics
+
+- Session-id stable across restart unless `suspended=True` (forces fresh) or `was_auto_reset=True` (idle/daily policy fired).
+- `expiry_finalized=True` persisted to `sessions.json` so the background expiry watcher does not re-finalize after a restart.
+- `is_fresh_reset=True` flag is consumed once by the gateway message handler to trigger topic/channel skill re-injection on the first message of an explicitly reset session.
+- The MCP `EventBridge` resets its monotonic cursor to 0 each start (no cursor persistence) — clients must tolerate cursor restart.
