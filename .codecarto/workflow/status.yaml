@@ -1,6 +1,6 @@
 project_name: hermes-agent
 pipeline: workflow/pipeline-full-with-deep-audit.yaml
-current_phase: reimplementation-spec
+current_phase: complete
 last_updated: "2026-05-06"
 
 phases:
@@ -18,9 +18,7 @@ phases:
       - findings/build-and-deploy/build-and-deploy.md
       - findings/config-model/config-model.md
     open_questions: []
-    carry_forward:
-      - {id: arch-CF10, kind: defer-to-phase, target_phase: porting, description: "RESOLVED in porting: 167KB auxiliary_client.py decomposed pre-port into 5 sub-modules."}
-      - {id: arch-CF11, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Platform MVP cut."}
+    carry_forward: []
 
   defect-scan-mechanical:
     status: complete
@@ -42,48 +40,35 @@ phases:
       - findings/public-surfaces/public-surfaces.md
       - findings/config-model/config-model.md
     open_questions: []
-    carry_forward:
-      - {id: ctr-CF8, kind: defer-to-phase, target_phase: porting, description: "RESOLVED in porting: 12 core / 20 important / 26 optional tier decomposition."}
-      - {id: ctr-CF9, kind: defer-to-phase, target_phase: porting, description: "RESOLVED in porting (collapsed with prot-CF7): adapter contract codified."}
-      - {id: ctr-CF10, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Acceptance scenarios baseline."}
-      - {id: ctr-CF11, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Default-deny vs default-allow auth posture."}
+    carry_forward: []
 
   protocols:
     status: complete
     owner_notes:
       - "6 state machines, 19+ events, 10 schemas, 18 hazards."
-      - "Validation block append deferred to final close (BACKLOG.md tracks)."
     outputs_present:
       - findings/protocols/protocols-and-state.md
       - findings/runtime-lifecycle/runtime-lifecycle.md
       - findings/state-and-storage/state-and-storage.md
     open_questions: []
-    carry_forward:
-      - {id: prot-CF6, kind: defer-to-phase, target_phase: porting, description: "RESOLVED in porting: think-block tags consolidated."}
-      - {id: prot-CF7, kind: defer-to-phase, target_phase: porting, description: "RESOLVED in porting (collapsed with ctr-CF9)."}
-      - {id: prot-CF8, kind: defer-to-phase, target_phase: porting, description: "RESOLVED in porting: recommend mtime-polling 200ms default."}
-      - {id: prot-CF9, kind: defer-to-phase, target_phase: reimplementation-spec, description: "parent_session_id chains: linear vs branch."}
-      - {id: prot-CF10, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Reset policy: at_hour local vs UTC."}
+    carry_forward: []
 
   defect-scan-semantic:
     status: complete
     owner_notes:
       - "19 findings (2 critical, 8 high, 7 medium, 2 low). All 16 pre-loaded carry-forwards resolved."
-      - "Critical D3.1: two-guard message dispatch invariant (collapses arch-CF8+ctr-CF5+prot-CF1)."
+      - "Critical D3.1: two-guard message dispatch invariant (collapses arch-CF8 + ctr-CF5 + prot-CF1)."
     outputs_present:
       - findings/defect-scan-semantic/semantic-defects.md
     open_questions: []
-    carry_forward:
-      - {id: dss-CF1, kind: defer-to-phase, target_phase: porting, description: "RESOLVED in porting: D5.4 verification deferred to impl-time read of model_tools.py."}
-      - {id: dss-CF2, kind: defer-to-phase, target_phase: porting, description: "RESOLVED in porting: D5.6 verification deferred to impl-time."}
-      - {id: dss-CF3, kind: defer-to-phase, target_phase: porting, description: "RESOLVED in porting: D4.2 subprocess.Popen enumeration deferred to impl-time."}
+    carry_forward: []
 
   porting:
     status: complete
     owner_notes:
-      - "167 KB auxiliary_client.py decomposition (arch-CF10) positioned as a pre-port refactor, not port-time decision. Flag for owner review."
-      - "CRITICAL D6.1 (yaml->os.environ mutation) and D3.1 (two-guard dispatch) are blockers; defect-fix-tracker.md lists them at top with status pending."
-      - "ACP recommended as first non-Python adapter SDK target (smallest stable contract); port-OQ1 awaits maintainer ruling."
+      - "167 KB auxiliary_client.py decomposition positioned as pre-port refactor."
+      - "D6.1 + D3.1 are blockers; defect-fix-tracker.md lists 12 fix-before-porting items."
+      - "Tier recommendations: 5 core / 2 important / 8 optional messaging platforms; ACP recommended as first non-Python adapter target."
     outputs_present:
       - findings/porting/reverse-engineering-bundle.md
       - findings/porting/defect-fix-tracker.md
@@ -92,29 +77,24 @@ phases:
       - findings/state-and-storage/state-and-storage.md
       - findings/build-and-deploy/build-and-deploy.md
       - findings/config-model/config-model.md
-    open_questions:
-      - {id: port-OQ1, kind: open-question, description: "ACP-first non-Python adapter SDK target awaits maintainer ruling."}
-      - {id: port-OQ2, kind: open-question, description: "Two-guard refactor: keep dual guards in port (preserve current behavior) or refactor to single canonical 'message in flight' invariant?"}
-      - {id: port-OQ3, kind: open-question, description: "Default mtime-polling vs FS-watch: porting recommends mtime as default but FS-watch is a future-only optimization with no spec yet."}
-    carry_forward:
-      - {id: port-CF1, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Auth posture decision: default-deny across all surfaces, with explicit allow-list flag preserved."}
-      - {id: port-CF2, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Concrete external dependency stance table per language target."}
-      - {id: port-CF3, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Three scope tiers (MVP / major-workflow parity / full parity) need formal acceptance scenario assignment per tier."}
-      - {id: port-CF4, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Defect-fix-tracker.md remains pending; reimpl-spec must declare which fixes are spec-design-time vs implementation-time."}
-      - {id: port-CF5, kind: defer-to-phase, target_phase: reimplementation-spec, description: "OAuth refresh strategy (locking, single-flight, clock-skew tolerance) is platform-agnostic but needs explicit spec."}
-      - {id: port-CF6, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Test strategy: how to validate the port against the 12+ acceptance scenarios from contracts phase."}
-      - {id: port-CF7, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Plugin/skill runtime: skill-loader format and plugin hook registration ABI must be portable, not Python-import-time."}
-      - {id: port-CF8, kind: defer-to-phase, target_phase: reimplementation-spec, description: "Compression-split semantics: linear chain (status-quo) vs branch model."}
-
-  reimplementation-spec:
-    status: pending
-    owner_notes: []
-    outputs_present: []
     open_questions: []
     carry_forward: []
 
+  reimplementation-spec:
+    status: complete
+    owner_notes:
+      - "Spec is strictly language-agnostic per Strategic Alignment Hook (resolved in planning)."
+      - "11 conceptual modules, 22 required behaviors, 15 hazards, 14 acceptance scenarios. 15 defects designed-around, 3 left-behind."
+      - "All planning carry-forwards (arch-CF11, ctr-CF10, ctr-CF11, prot-CF9, prot-CF10, port-OQ1) explicitly resolved with cited recommendations: default-deny auth, linear-with-explicit-branch session model, UTC + per-user TZ reset policy."
+    outputs_present:
+      - findings/reimplementation-spec/reimplementation-spec.md
+    open_questions:
+      - {id: rs-OQ1, kind: open-question, description: "10 known unknowns documented in spec; 6 spikes recommended; 3 post-pipeline carry-forwards."}
+    carry_forward: []
+
 next_actions:
-  - Run reimplementation-spec phase (language-agnostic, per Strategic Alignment Hook). Inputs: porting bundle + all prior outputs.
-  - Resolve carry-forwards with target_phase=reimplementation-spec (10+ items: arch-CF11, ctr-CF10, ctr-CF11, prot-CF9, prot-CF10, port-CF1..CF8).
-  - Define 3 scope tiers, defect-handling per critical/high item, 12+ acceptance scenarios, dependency stance.
-  - Final close TODO: append validation block to findings/protocols/protocols-and-state.md (BACKLOG.md item).
+  - Pipeline complete. All 7 phases status=complete.
+  - Final closeout written: closeouts/2026-05-06-final-orchestrator-close.md
+  - Conventions promoted: see CONVENTIONS.md
+  - Decisions promoted: see DECISIONS.md
+  - Backlog: protocols-and-state.md validation block append (deferred from Phase 4 due to repeated subagent timeouts on the 45 KB rewrite). See BACKLOG.md.
